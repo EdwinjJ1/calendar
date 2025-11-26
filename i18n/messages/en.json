@@ -1,0 +1,86 @@
+{
+  "home": {
+    "title": "NEON\nCalendar",
+    "subtitle": "✨ Click an ice cube below ✨",
+    "calendar": {
+      "title": "Calendar",
+      "description": "Create EPIC events with 3D views and neon vibes",
+      "button": "🚀 Launch Calendar"
+    },
+    "todos": {
+      "title": "Todos",
+      "description": "Drag, drop, and DESTROY tasks with style",
+      "button": "⚡ Open Todos"
+    },
+    "features": {
+      "localStorage": "💾 All data stored locally in your browser",
+      "export": "📤 Export to Apple Calendar with one click"
+    }
+  },
+  "calendar": {
+    "title": "📅 Calendar",
+    "newEvent": "✨ New Event",
+    "export": "📤 Export to Apple Calendar",
+    "aiImport": "🤖 AI Import from Markdown",
+    "modal": {
+      "title": "Create New Event",
+      "eventTitle": "Event Title",
+      "eventTitlePlaceholder": "e.g., Team Meeting",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "description": "Description",
+      "descriptionPlaceholder": "Add details...",
+      "cancel": "Cancel",
+      "save": "✨ Save Event"
+    },
+    "aiImportModal": {
+      "title": "🤖 AI Calendar Import",
+      "subtitle": "Upload your study plan markdown or paste text below",
+      "uploadTab": "📁 Upload File",
+      "pasteTab": "📝 Paste Text",
+      "uploadButton": "Choose .md file",
+      "textareaPlaceholder": "Paste your study plan here...\n\nExample:\n# 2025-11-17 Study Plan\n\n- **11:00 AM - 2:30 PM:**\n  - **Subject:** COMP1521\n  - **Goal:** Review core concepts",
+      "parseButton": "🔮 Parse Schedule",
+      "parsing": "🔮 Parsing...",
+      "preview": "📋 Preview ({count} events detected)",
+      "importButton": "📥 Import All",
+      "close": "Close",
+      "success": "✅ Successfully imported {count} events!",
+      "error": "❌ No events found. Please check your format."
+    }
+  },
+  "todos": {
+    "title": "✅ Todos",
+    "export": "📤 Export to Apple Calendar",
+    "form": {
+      "title": "🎯 Create New Todo",
+      "todoTitle": "What needs to be done?",
+      "todoPlaceholder": "e.g., Finish project proposal",
+      "priority": "Priority",
+      "high": "🔥 High",
+      "medium": "⚡ Medium",
+      "low": "💚 Low",
+      "dueDate": "Due Date",
+      "category": "Category",
+      "categoryPlaceholder": "e.g., Work, Study, Personal",
+      "addButton": "✨ Add Todo"
+    },
+    "filters": {
+      "all": "📋 All",
+      "active": "⚡ Active",
+      "completed": "✓ Completed"
+    },
+    "empty": {
+      "icon": "🎉",
+      "message": "No todos here! Time to relax or add a new one."
+    },
+    "item": {
+      "delete": "🗑️ Delete"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "success": "Success!"
+  }
+}
