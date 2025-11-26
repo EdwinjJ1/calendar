@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { nanoid } from 'nanoid';
 import Button from '../ui/Button';
-import { parseMarkdownToPlan } from '@/lib/aiParser';
 import type { CalendarEvent } from '@/types';
 
 interface AIImportProps {
@@ -13,11 +13,46 @@ interface AIImportProps {
 export default function AIImport({ onImport }: AIImportProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [previewEvents, setPreviewEvents] = useState<CalendarEvent[]>([]);
 
-  const handleParse = () => {
-    const events = parseMarkdownToPlan(text);
-    setPreviewEvents(events);
+  const handleParse = async () => {
+    if (!text.trim()) return;
+    setIsLoading(true);
+    setPreviewEvents([]);
+
+    try {
+      // Use environment variable for API URL in production/mobile builds
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiBaseUrl}/api/ai-schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          currentDate: new Date().toString(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to parse schedule');
+      }
+
+      const events: CalendarEvent[] = data.events.map((e: any) => ({
+        ...e,
+        id: nanoid(),
+        start: new Date(e.start),
+        end: new Date(e.end),
+      }));
+
+      setPreviewEvents(events);
+    } catch (error) {
+      console.error('Parse error:', error);
+      alert('Failed to parse schedule. Please check your API key and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImport = () => {
@@ -34,9 +69,6 @@ export default function AIImport({ onImport }: AIImportProps) {
       reader.onload = (event) => {
         const content = event.target?.result as string;
         setText(content);
-        // 自动解析
-        const events = parseMarkdownToPlan(content);
-        setPreviewEvents(events);
       };
       reader.readAsText(file);
     }
@@ -89,13 +121,18 @@ export default function AIImport({ onImport }: AIImportProps) {
                   <textarea
                     value={text}
                     onChange={e => setText(e.target.value)}
-                    placeholder="粘贴你的学习计划...&#10;&#10;示例：&#10;- **上午 11:00 - 下午 2:30:**&#10;  - **科目:** COMP1521&#10;  - **目标:** 复习核心知识点"
+                    placeholder="Describe your schedule naturally...&#10;&#10;Examples:&#10;- Meeting with Team A tomorrow at 2 PM for 1 hour&#10;- Study session on Monday morning from 9 to 11"
                     className="w-full h-64 px-4 py-3 bg-[var(--color-bg-dark)] border-2 border-[var(--neon-cyan)] rounded-xl text-[var(--color-text)] placeholder-[var(--color-text-dim)] focus:border-[var(--neon-green)] focus:shadow-[0_0_20px_rgba(0,255,65,0.5)] transition-all outline-none font-mono text-sm"
                   />
                 </div>
 
-                <Button onClick={handleParse} className="w-full" size="lg">
-                  🔮 Parse Schedule
+                <Button 
+                  onClick={handleParse} 
+                  className="w-full" 
+                  size="lg"
+                  disabled={isLoading || !text}
+                >
+                  {isLoading ? '🔮 Parsing with AI...' : '🔮 Parse Schedule'}
                 </Button>
 
                 {previewEvents.length > 0 && (

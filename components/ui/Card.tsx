@@ -1,9 +1,8 @@
 'use client';
 
-import { HTMLAttributes } from 'react';
-import { motion } from 'framer-motion';
+import { HTMLMotionProps, motion } from 'framer-motion';
 
-interface CardProps extends HTMLAttributes<HTMLDivElement> {
+interface CardProps extends HTMLMotionProps<'div'> {
   hover?: boolean;
   float?: boolean;
   glow?: boolean;

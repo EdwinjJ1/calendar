@@ -1,0 +1,422 @@
+// Neon Calendar - Team Collaboration Platform
+// Prisma Schema Definition
+// Database: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// USER & TEAM MANAGEMENT
+// ============================================================
+
+/// User model - synced with Clerk authentication
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique /// Clerk user ID for authentication
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  ownedTeams     Team[]          @relation("TeamOwner")
+  memberships    TeamMember[]
+  events         CalendarEvent[] @relation("EventCreator")
+  tasks          Task[]          @relation("TaskCreator")
+  assignedTasks  Task[]          @relation("TaskAssignee")
+  messages       Message[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+/// Team/Workspace model
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique /// URL-friendly identifier
+  description String?
+  avatarUrl   String?  @map("avatar_url")
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner    User           @relation("TeamOwner", fields: [ownerId], references: [id])
+  members  TeamMember[]
+  events   CalendarEvent[]
+  boards   Board[]
+  channels Channel[]
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("teams")
+}
+
+/// Team membership with role
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String   @map("team_id")
+  userId   String   @map("user_id")
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// ============================================================
+// CALENDAR EVENTS
+// ============================================================
+
+/// Calendar event - supports both personal and team events
+model CalendarEvent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  startTime   DateTime  @map("start_time")
+  endTime     DateTime  @map("end_time")
+  allDay      Boolean   @default(false) @map("all_day")
+  color       String?   /// Hex color code for display
+  recurrence  String?   /// RRULE format for recurring events
+
+  // Ownership
+  creatorId String  @map("creator_id")
+  teamId    String? @map("team_id") /// null = personal event
+
+  // AI generation tracking
+  aiGenerated     Boolean  @default(false) @map("ai_generated")
+  sourceMessageId String?  @map("source_message_id")
+  confidence      Float?   /// AI confidence score (0-1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator       User     @relation("EventCreator", fields: [creatorId], references: [id])
+  team          Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id])
+
+  // Event participants
+  attendees EventAttendee[]
+
+  @@index([creatorId])
+  @@index([teamId])
+  @@index([startTime])
+  @@index([endTime])
+  @@map("calendar_events")
+}
+
+/// Event attendee for shared events
+model EventAttendee {
+  id       String             @id @default(cuid())
+  eventId  String             @map("event_id")
+  userId   String             @map("user_id")
+  status   AttendeeStatus     @default(PENDING)
+  response AttendeeResponse?
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_attendees")
+}
+
+enum AttendeeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+enum AttendeeResponse {
+  YES
+  NO
+  MAYBE
+}
+
+// ============================================================
+// KANBAN BOARD SYSTEM
+// ============================================================
+
+/// Kanban board
+model Board {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  teamId      String   @map("team_id")
+  isDefault   Boolean  @default(false) @map("is_default") /// Default board for team
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  columns Column[]
+
+  @@index([teamId])
+  @@map("boards")
+}
+
+/// Kanban column
+model Column {
+  id        String   @id @default(cuid())
+  name      String
+  order     Int      /// Display order (0-indexed)
+  color     String?  /// Hex color for column header
+  boardId   String   @map("board_id")
+  wipLimit  Int?     @map("wip_limit") /// Work-in-progress limit
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([boardId])
+  @@index([boardId, order])
+  @@map("columns")
+}
+
+/// Task/Issue in kanban board
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  order       Int        /// Display order within column
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(TODO)
+  dueDate     DateTime?  @map("due_date")
+  estimate    Int?       /// Estimated hours/points
+
+  // Ownership
+  columnId   String  @map("column_id")
+  creatorId  String  @map("creator_id")
+  assigneeId String? @map("assignee_id")
+
+  // AI generation tracking
+  aiGenerated     Boolean @default(false) @map("ai_generated")
+  sourceMessageId String? @map("source_message_id")
+  confidence      Float?  /// AI confidence score (0-1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  column        Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  creator       User     @relation("TaskCreator", fields: [creatorId], references: [id])
+  assignee      User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id])
+  labels        TaskLabel[]
+  comments      Comment[]
+  attachments   Attachment[]
+
+  @@index([columnId])
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@index([columnId, order])
+  @@map("tasks")
+}
+
+/// Label for categorizing tasks
+model Label {
+  id        String      @id @default(cuid())
+  name      String
+  color     String      /// Hex color
+  boardId   String      @map("board_id")
+  tasks     TaskLabel[]
+
+  @@unique([boardId, name])
+  @@map("labels")
+}
+
+/// Many-to-many relation between Task and Label
+model TaskLabel {
+  taskId  String @map("task_id")
+  labelId String @map("label_id")
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@map("task_labels")
+}
+
+/// Comment on a task
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String   @map("task_id")
+  authorId  String   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("comments")
+}
+
+/// File attachment for tasks
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  size      Int      /// File size in bytes
+  mimeType  String   @map("mime_type")
+  taskId    String   @map("task_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("attachments")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  ARCHIVED
+}
+
+// ============================================================
+// CHAT & MESSAGING SYSTEM
+// ============================================================
+
+/// Chat channel within a team
+model Channel {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  type        ChannelType @default(PUBLIC)
+  teamId      String      @map("team_id")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  team     Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([teamId, name])
+  @@index([teamId])
+  @@map("channels")
+}
+
+/// Chat message
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String   @map("user_id")
+  channelId String   @map("channel_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  editedAt  DateTime? @map("edited_at")
+  deleted   Boolean  @default(false)
+
+  // AI processing status
+  aiProcessed Boolean @default(false) @map("ai_processed")
+  aiResult    Json?   @map("ai_result") /// Parsed AI results as JSON
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id])
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  // AI-generated items from this message
+  generatedEvents CalendarEvent[]
+  generatedTasks  Task[]
+
+  @@index([channelId])
+  @@index([userId])
+  @@index([channelId, createdAt])
+  @@map("messages")
+}
+
+enum ChannelType {
+  PUBLIC
+  PRIVATE
+  DIRECT /// Direct messages between users
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+/// User notification
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  body      String?
+  data      Json?            /// Additional data as JSON
+  read      Boolean          @default(false)
+  userId    String           @map("user_id")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  EVENT_REMINDER
+  EVENT_INVITATION
+  TASK_ASSIGNED
+  TASK_DUE_SOON
+  TASK_COMMENT
+  MENTION
+  AI_SUGGESTION
+  TEAM_INVITATION
+}
+
+// ============================================================
+// AI PROCESSING LOG (for debugging and improvement)
+// ============================================================
+
+/// Log of AI parsing operations
+model AIProcessingLog {
+  id            String   @id @default(cuid())
+  messageId     String?  @map("message_id")
+  inputText     String   @map("input_text")
+  outputJson    Json?    @map("output_json")
+  modelUsed     String   @map("model_used")
+  tokensUsed    Int?     @map("tokens_used")
+  processingMs  Int?     @map("processing_ms")
+  success       Boolean
+  errorMessage  String?  @map("error_message")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([messageId])
+  @@index([createdAt])
+  @@map("ai_processing_logs")
+}
