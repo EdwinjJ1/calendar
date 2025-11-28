@@ -1,91 +1,98 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
 import { formatISO } from 'date-fns';
-import Button from '../ui/Button';
-import type { TodoItem } from '@/types';
-import { PRIORITY_LEVELS, LIMITS } from '@/lib/constants';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import { TodoItem } from '@/types';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface TodoFormProps {
   onAdd: (todo: Omit<TodoItem, 'id' | 'createdAt'>) => void;
 }
 
 export default function TodoForm({ onAdd }: TodoFormProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: PRIORITY_LEVELS.MEDIUM,
-    dueDate: '',
-    categories: '',
-  });
+  const [title, setTitle] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!title.trim()) return;
+
     onAdd({
-      title: formData.title,
-      description: formData.description,
+      title: title.trim(),
       completed: false,
-      priority: formData.priority,
-      dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
-      categories: formData.categories.split(',').map(c => c.trim()).filter(Boolean),
+      priority,
+      categories: [],
     });
-    setFormData({ title: '', description: '', priority: PRIORITY_LEVELS.MEDIUM, dueDate: '', categories: '' });
+
+    setTitle('');
+    setIsExpanded(false);
+    setPriority('medium');
   };
 
-  const inputClass = "w-full px-4 py-3 bg-[var(--color-bg-dark)] border-2 border-[var(--neon-cyan)] rounded-xl text-[var(--color-text)] placeholder-[var(--color-text-dim)] focus:border-[var(--neon-green)] focus:shadow-[0_0_20px_rgba(0,255,65,0.5)] transition-all outline-none";
-
   return (
-    <motion.form
-      onSubmit={handleSubmit}
-      className="space-y-4 card-3d p-6 rounded-xl border-2 border-[var(--neon-cyan)] shadow-[0_0_30px_rgba(0,255,255,0.3)]"
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 200 }}
-    >
-      <input
-        type="text"
-        placeholder="What needs to be done? ✨"
-        value={formData.title}
-        onChange={e => setFormData({ ...formData, title: e.target.value })}
-        maxLength={LIMITS.MAX_TITLE_LENGTH}
-        className={inputClass}
-        required
-      />
-      <textarea
-        placeholder="Description (optional)"
-        value={formData.description}
-        onChange={e => setFormData({ ...formData, description: e.target.value })}
-        maxLength={LIMITS.MAX_DESCRIPTION_LENGTH}
-        className={inputClass}
-        rows={2}
-      />
-      <div className="grid grid-cols-3 gap-4">
-        <select
-          value={formData.priority}
-          onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
-          className={inputClass}
-        >
-          <option value={PRIORITY_LEVELS.LOW} className="bg-[var(--color-bg)]">🟢 Low</option>
-          <option value={PRIORITY_LEVELS.MEDIUM} className="bg-[var(--color-bg)]">🟡 Medium</option>
-          <option value={PRIORITY_LEVELS.HIGH} className="bg-[var(--color-bg)]">🔴 High</option>
-        </select>
-        <input
-          type="date"
-          value={formData.dueDate}
-          onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
-          className={inputClass}
-          placeholder="Due date"
-        />
-        <input
-          type="text"
-          placeholder="Tags (comma separated)"
-          value={formData.categories}
-          onChange={e => setFormData({ ...formData, categories: e.target.value })}
-          className={inputClass}
-        />
-      </div>
-      <Button type="submit" className="w-full" size="lg">✨ Add Todo</Button>
-    </motion.form>
+    <Card className="bg-[var(--color-bg-card-dark)] text-white shadow-xl border border-white/5" padding="none">
+      <form onSubmit={handleSubmit} className="relative">
+        <div className="flex items-center p-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={() => setIsExpanded(true)}
+            placeholder="Add a new task..."
+            className="flex-1 bg-transparent text-white placeholder-gray-500 px-4 py-3 outline-none text-lg"
+          />
+          <AnimatePresence>
+            {(isExpanded || title) && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+              >
+                <Button 
+                  type="submit" 
+                  size="icon"
+                  className="bg-[var(--color-avocado)] hover:bg-[var(--color-avocado-light)] text-white mr-2"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-white/10"
+            >
+              <div className="p-3 flex gap-2 justify-end">
+                 {['low', 'medium', 'high'].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPriority(p as any)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors uppercase tracking-wider ${
+                        priority === p 
+                          ? 'bg-white text-black' 
+                          : 'bg-white/10 text-gray-400 hover:bg-white/20'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                 ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </form>
+    </Card>
   );
 }

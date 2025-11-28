@@ -30,6 +30,13 @@ jest.mock('@/lib/featureFlags', () => ({
   getStorageMode: jest.fn().mockReturnValue('localStorage'),
 }));
 
+// Mock Navigation component to avoid complex dependencies
+jest.mock('@/components/ui/Navigation', () => {
+  return function MockNavigation() {
+    return <nav data-testid="mock-navigation">Navigation</nav>;
+  };
+});
+
 // Mock icsExport module
 jest.mock('@/lib/icsExport', () => ({
   exportTodos: jest.fn(),
@@ -122,7 +129,7 @@ describe('TodosPage - useEffect副作用测试', () => {
       render(<TodosPage />);
 
       expect(todoStorage.getAll).toHaveBeenCalled();
-      expect(screen.getByText(/No todos here/i)).toBeInTheDocument();
+      expect(screen.getByText(/No tasks found/i)).toBeInTheDocument();
     });
   });
 
@@ -196,7 +203,7 @@ describe('TodosPage - useEffect副作用测试', () => {
 
       // 验证待办事项被删除（显示空状态）
       await waitFor(() => {
-        expect(screen.getByText(/No todos here/i)).toBeInTheDocument();
+        expect(screen.getByText(/No tasks found/i)).toBeInTheDocument();
       });
 
       // 注意：当todos数组为空时，useEffect中的if条件会阻止save调用
@@ -375,7 +382,7 @@ describe('TodosPage - useEffect副作用测试', () => {
       const activeButton = screen.getByText(/Active/i);
       fireEvent.click(activeButton);
 
-      expect(screen.getByText(/No todos here/i)).toBeInTheDocument();
+      expect(screen.getByText(/No tasks found/i)).toBeInTheDocument();
     });
   });
 
@@ -468,7 +475,7 @@ describe('TodosPage - useEffect副作用测试', () => {
 
       render(<TodosPage />);
 
-      const exportButton = screen.getByText(/Export to Apple Calendar/i);
+      const exportButton = screen.getByText(/Export/i);
       fireEvent.click(exportButton);
 
       expect(exportTodos).toHaveBeenCalledWith(mockTodos);

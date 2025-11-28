@@ -23,6 +23,26 @@ describe('AIImport - 副作用测试', () => {
   });
 
   describe('文件上传副作用', () => {
+    it('应该在没有选择文件时不执行任何操作', async () => {
+      render(<AIImport onImport={mockOnImport} />);
+
+      const openButton = screen.getByText(/AI Import from Markdown/i);
+      fireEvent.click(openButton);
+
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+      // 模拟没有选择文件的情况
+      Object.defineProperty(fileInput, 'files', {
+        value: [],
+        writable: false,
+      });
+      fireEvent.change(fileInput);
+
+      // 验证textarea仍然为空
+      const textarea = screen.getByPlaceholderText(/Describe your schedule/i);
+      expect(textarea).toHaveValue('');
+    });
+
     it('应该通过FileReader读取文件内容', async () => {
       render(<AIImport onImport={mockOnImport} />);
 
@@ -184,6 +204,30 @@ describe('AIImport - 副作用测试', () => {
       });
     });
 
+    it('应该在API错误但没有error字段时使用默认错误消息', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: async () => ({}), // No error field
+      });
+
+      render(<AIImport onImport={mockOnImport} />);
+
+      const openButton = screen.getByText(/AI Import from Markdown/i);
+      fireEvent.click(openButton);
+
+      const textarea = screen.getByPlaceholderText(/Describe your schedule/i);
+      fireEvent.change(textarea, { target: { value: '测试' } });
+
+      const parseButton = screen.getByText(/Parse Schedule/i);
+      fireEvent.click(parseButton);
+
+      await waitFor(() => {
+        expect(global.alert).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to parse schedule')
+        );
+      });
+    });
+
     it('应该在网络错误时显示alert', async () => {
       (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -235,6 +279,39 @@ describe('AIImport - 副作用测试', () => {
       await waitFor(() => {
         expect(screen.getByText(/Found 1 Events/i)).toBeInTheDocument();
         expect(screen.getByText('测试事件')).toBeInTheDocument();
+      });
+    });
+
+    it('应该在事件有描述时显示描述', async () => {
+      const mockResponse = {
+        events: [
+          {
+            title: '测试事件',
+            description: '这是事件描述',
+            start: '2024-01-15T10:00:00.000Z',
+            end: '2024-01-15T11:00:00.000Z',
+          },
+        ],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      render(<AIImport onImport={mockOnImport} />);
+
+      const openButton = screen.getByText(/AI Import from Markdown/i);
+      fireEvent.click(openButton);
+
+      const textarea = screen.getByPlaceholderText(/Describe your schedule/i);
+      fireEvent.change(textarea, { target: { value: '测试' } });
+
+      const parseButton = screen.getByText(/Parse Schedule/i);
+      fireEvent.click(parseButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('这是事件描述')).toBeInTheDocument();
       });
     });
 

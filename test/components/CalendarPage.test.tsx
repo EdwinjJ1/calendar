@@ -30,6 +30,13 @@ jest.mock('@/lib/featureFlags', () => ({
   getStorageMode: jest.fn().mockReturnValue('localStorage'),
 }));
 
+// Mock Navigation component to avoid complex dependencies
+jest.mock('@/components/ui/Navigation', () => {
+  return function MockNavigation() {
+    return <nav data-testid="mock-navigation">Navigation</nav>;
+  };
+});
+
 // Mock icsExport module
 jest.mock('@/lib/icsExport', () => ({
   exportEvents: jest.fn(),
@@ -360,7 +367,7 @@ describe('CalendarPage - useEffect副作用测试', () => {
 
       render(<CalendarPage />);
 
-      const exportButton = screen.getByText(/Export to Apple Calendar/i);
+      const exportButton = screen.getByText(/Export/i);
       fireEvent.click(exportButton);
 
       expect(exportEvents).toHaveBeenCalledWith(mockEvents);

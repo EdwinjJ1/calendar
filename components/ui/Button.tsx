@@ -1,33 +1,37 @@
 import { ButtonHTMLAttributes, forwardRef } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  glow?: boolean;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'dark';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
+  fullWidth?: boolean;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', glow = true, className = '', children, ...props }, ref) => {
-    const baseStyles = 'font-bold transition-all duration-300 disabled:opacity-50 relative overflow-hidden';
+  ({ variant = 'primary', size = 'md', fullWidth = false, className = '', children, ...props }, ref) => {
+    const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-avocado)] disabled:opacity-50 disabled:pointer-events-none active:scale-95';
 
     const variants = {
-      primary: 'bg-[var(--neon-green)] text-[var(--color-bg)] border-2 border-[var(--neon-green)] hover:bg-transparent hover:text-[var(--neon-green)]',
-      secondary: 'bg-transparent text-[var(--neon-cyan)] border-2 border-[var(--neon-cyan)] hover:bg-[var(--neon-cyan)] hover:text-[var(--color-bg)]',
-      danger: 'bg-[var(--neon-pink)] text-[var(--color-bg)] border-2 border-[var(--neon-pink)] hover:bg-transparent hover:text-[var(--neon-pink)]',
+      primary: 'bg-[var(--color-avocado)] text-white hover:bg-[var(--color-avocado-dark)] border border-transparent shadow-md hover:shadow-lg',
+      secondary: 'bg-white text-[var(--color-avocado)] hover:bg-gray-50 border border-gray-100 shadow-sm',
+      outline: 'bg-transparent border-2 border-[var(--color-avocado)] text-[var(--color-avocado)] hover:bg-[var(--color-avocado)] hover:text-white',
+      ghost: 'bg-transparent text-[var(--color-text)] hover:bg-gray-100/50',
+      danger: 'bg-[var(--color-danger)] text-white hover:opacity-90 border border-transparent',
+      dark: 'bg-[var(--color-bg-card-dark)] text-white hover:opacity-90 shadow-md',
     };
 
     const sizes = {
-      sm: 'px-4 py-2 text-sm rounded-lg',
-      md: 'px-6 py-3 text-base rounded-xl',
-      lg: 'px-8 py-4 text-lg rounded-2xl',
+      sm: 'h-8 px-3 text-sm rounded-[var(--radius-sm)]',
+      md: 'h-11 px-5 py-2 text-base rounded-[var(--radius-md)]',
+      lg: 'h-14 px-8 text-lg rounded-[var(--radius-lg)]',
+      icon: 'h-10 w-10 p-0 rounded-full',
     };
 
-    const glowClass = glow ? 'shadow-[0_0_20px_rgba(0,255,65,0.5)] hover:shadow-[0_0_40px_rgba(0,255,65,0.8)]' : '';
+    const widthClass = fullWidth ? 'w-full' : '';
 
     return (
       <button
         ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${glowClass} ${className}`}
+        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${widthClass} ${className}`}
         {...props}
       >
         {children}

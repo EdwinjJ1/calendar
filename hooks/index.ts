@@ -1,6 +1,6 @@
 /**
  * Hooks Index
- * 
+ *
  * Central export for all custom hooks.
  */
 
@@ -33,4 +33,37 @@ export {
   useDeleteTodo,
   todoKeys,
 } from './useTodos';
+
+// Teams
+export {
+  useTeams,
+  useTeam,
+  useCreateTeam,
+  useAddMember,
+  useRemoveMember,
+  teamKeys,
+  type Team,
+  type TeamMember,
+} from './useTeams';
+
+// Boards
+export {
+  useBoards,
+  useBoard,
+  useMoveTask,
+  boardKeys,
+  type Board,
+  type Column,
+  type Task,
+} from './useBoards';
+
+// Chat
+export {
+  useChannels,
+  useMessages,
+  useSendMessage,
+  chatKeys,
+  type Channel,
+  type Message,
+} from './useChat';
 

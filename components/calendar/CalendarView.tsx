@@ -5,8 +5,10 @@ import { format, parse, startOfWeek, getDay } from 'date-fns';
 import type { CalendarEvent } from '@/types';
 import { CALENDAR_VIEWS } from '@/lib/constants';
 
+import { enUS } from 'date-fns/locale';
+
 const locales = {
-  'en-US': require('date-fns/locale/en-US'),
+  'en-US': enUS,
 };
 
 const localizer = dateFnsLocalizer({
